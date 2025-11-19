@@ -24,9 +24,9 @@ ray** init_rays(){
 	for (int i = 0; i < 80; i++){
 		rays[i] = malloc(sizeof(struct ray)*40);
 		for (int j = 0; j < 40; j++){
-			rays[i][j].x = -7;
-			rays[i][j].y = i-20;
-			rays[i][j].z = j-40;
+			rays[i][j].x = -7.0;
+			rays[i][j].y = (float)(i-20);
+			rays[i][j].z = (float)(j-40);
 			rays[i][j].dx = 1.0;
 			rays[i][j].dy = rays[i][j].dz = 0.0;
 			rays[i][j].alive = 1;
@@ -50,6 +50,7 @@ void print_matrix(char matrix[80][40]){
 		for (int j = 0; j < 40; j++){
 			putchar(matrix[i][j]);
 		}
+		putchar('\n');
 	}
 }
 
@@ -60,10 +61,12 @@ int main(void){
 	char matrix[80][40];
 	ray** rays = init_rays();
 	int sent = 1;
-	while (sent)
+	while (sent){
+	sent = 0;
 	for (int i = 0; i < 80; i++){
 		for (int j = 0; j < 40; j++){
-			if (rays[i][j].alive){ 
+			if (rays[i][j].alive){
+				sent = 1; 
 				rays[i][j].x += rays[i][j].dx;
 				if (hit(rays[i][j].x, rays[i][j].y, rays[i][j].z, &hole)){
 					rays[i][j].ascii = '@';
@@ -74,7 +77,7 @@ int main(void){
 				}
 			}
 		}
-	}
+	}}
 	for (int i = 0; i < 80; i++){
 		for (int j = 0; j < 40; j++){
 			matrix[i][j] = rays[i][j].ascii;

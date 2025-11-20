@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define H 40
+#define W 120
+
 typedef struct blackhole {
 	int x, y, z;
 	int radius;
@@ -20,18 +23,18 @@ typedef struct ray {
 } ray;
 
 ray** init_rays(){
-	ray** rays = malloc(sizeof(struct ray*)*80);
-	for (int i = 0; i < 80; i++){
-		rays[i] = malloc(sizeof(struct ray)*40);
-		for (int j = 0; j < 40; j++){
+	ray** rays = malloc(sizeof(struct ray*)*H);
+	for (int i = 0; i < H; i++){
+		rays[i] = malloc(sizeof(struct ray)*W);
+		for (int j = 0; j < W; j++){
 			rays[i][j].x = -7.0;
-			rays[i][j].y = (float)(i-20);
-			rays[i][j].z = (float)(j-40);
+			rays[i][j].y = (float)(i-H/2);
+			rays[i][j].z = (float)(j-W/2);
 			rays[i][j].dx = 1.0;
 			rays[i][j].dy = rays[i][j].dz = 0.0;
 			rays[i][j].alive = 1;
 			rays[i][j].impact = 0;
-			rays[i][j].ascii = ' ';
+			rays[i][j].ascii = '.';
 		}
 	}
 	return rays;
@@ -45,9 +48,9 @@ int hit(float x, float y, float z, blackhole* hole){
 	return xx+yy+zz <= rr;
 }
 
-void print_matrix(char matrix[80][40]){	
-	for (int i = 0; i < 80; i++){
-		for (int j = 0; j < 40; j++){
+void print_matrix(char matrix[H][W]){	
+	for (int i = 0; i < H; i++){
+		for (int j = 0; j < W; j++){
 			putchar(matrix[i][j]);
 		}
 		putchar('\n');
@@ -57,14 +60,14 @@ void print_matrix(char matrix[80][40]){
 int main(void){
 	struct blackhole hole;
 	hole.x = hole.y = hole.z = 0;
-	hole.radius = 4;
-	char matrix[80][40];
+	hole.radius = 8;
+	char matrix[H][W];
 	ray** rays = init_rays();
 	int sent = 1;
 	while (sent){
 	sent = 0;
-	for (int i = 0; i < 80; i++){
-		for (int j = 0; j < 40; j++){
+	for (int i = 0; i < H; i++){
+		for (int j = 0; j < W; j++){
 			if (rays[i][j].alive){
 				sent = 1; 
 				rays[i][j].x += rays[i][j].dx;
@@ -78,8 +81,8 @@ int main(void){
 			}
 		}
 	}}
-	for (int i = 0; i < 80; i++){
-		for (int j = 0; j < 40; j++){
+	for (int i = 0; i < H; i++){
+		for (int j = 0; j < W; j++){
 			matrix[i][j] = rays[i][j].ascii;
 		}
 	}

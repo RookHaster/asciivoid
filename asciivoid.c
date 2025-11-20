@@ -3,16 +3,17 @@
 
 #define H 40
 #define W 120
+#define G 6.674e-11
+#define C 299792458.0
 
 typedef struct blackhole {
 	int x, y, z;
-	int radius;
-	float gravity;
+	float radius;
 } blackhole;
 
 typedef struct ring {
 	int x, y, z;
-	int iradius, eradius;
+	float iradius, eradius;
 } ring;
 
 typedef struct ray {
@@ -21,6 +22,21 @@ typedef struct ray {
 	char alive, impact;
 	char ascii;
 } ray;
+
+void init_bh(blackhole* bh, int x, int y, int z, float radius){
+	bh->x = x;
+	bh->y = y;
+	bh->z = z;
+	bh->radius = radius;
+}
+
+void init_ring(ring* r, blackhole* bh, float ir, float er){
+	r->x = bh->x;
+	r->y = bh->y;
+	r->z = bh->z;
+	r-iradius = ir;
+	r-eradius = er;
+}
 
 ray** init_rays(){
 	ray** rays = malloc(sizeof(struct ray*)*H);
@@ -59,8 +75,7 @@ void print_matrix(char matrix[H][W]){
 
 int main(void){
 	struct blackhole hole;
-	hole.x = hole.y = hole.z = 0;
-	hole.radius = 8;
+	init_bh(&hole, 0, 0, 0, 5.0);
 	char matrix[H][W];
 	ray** rays = init_rays();
 	int sent = 1;

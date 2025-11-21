@@ -3,9 +3,9 @@
 #include <math.h>
 
 #define H 40
-#define W 120
-#define K 0.05
-#define STEP 0.2
+#define W 80
+#define K 0.3
+#define STEP 0.1
 typedef struct blackhole {
 	int x, y, z;
 	float radius;
@@ -38,6 +38,7 @@ void init_ring(ring* r, blackhole* bh, float ir, float er, float vol){
 	r->z = bh->z;
 	r->iradius = ir;
 	r->eradius = er;
+	r->vol = vol;
 }
 
 ray** init_rays(){
@@ -72,7 +73,7 @@ int hit_ring(float x, float y, float z, ring* orbit){
 	float ir2 = orbit->iradius * orbit->iradius;
 	float er2 = orbit->eradius * orbit->eradius;
 	return xx+zz <= er2 && xx+zz >= ir2 
-		&& y <= orbit->vol - (orbit->vol / 2) && y >= orbit->vol - (orbit->vol * 1.5);
+		&& y <= orbit->vol - (orbit->vol / 2) - (0.2*x) && y >= orbit->vol - (orbit->vol * 1.5) - (0.2*x);
 }
 
 void step(ray* vector, blackhole* bh){
@@ -111,7 +112,7 @@ int main(void){
 	blackhole hole;
 	init_bh(&hole, 0, 0, 0, 5.0);
 	ring orbit;
-	init_ring(&orbit, &hole, 5.0, 12.0, 0.5);
+	init_ring(&orbit, &hole, 10.0, 20.0, 0.5);
 	char matrix[H][W];
 	ray** rays = init_rays();
 	int sent = 1;
@@ -127,10 +128,12 @@ int main(void){
 					rays[i][j].alive = 0;
 				}
 				if (hit_ring(rays[i][j].x, rays[i][j].y, rays[i][j].z, &orbit)){
-					rays[i][j].ascii = 'o';
+					rays[i][j].ascii = '#';
 					rays[i][j].alive = 0;
 				}
-				if (rays[i][j].x >= 20){
+				if (rays[i][j].x >= H/2 || rays[i][j].x <= -H/2
+					|| rays[i][j].y >= H/2 || rays[i][j].y <= -H/2
+					|| rays[i][j].z >= W/2 || rays[i][j].z <= -W/2){
 					rays[i][j].alive = 0;
 				}
 			}

@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define H 40
 #define W 120
-#define G 6.674e-11
-#define C 299792458.0
-
+#define K 0.05
+#define STEP 0.2
 typedef struct blackhole {
 	int x, y, z;
 	float radius;
@@ -13,7 +13,7 @@ typedef struct blackhole {
 
 typedef struct ring {
 	int x, y, z;
-	float iradius, eradius;
+	float iradius, eradius, vol;
 } ring;
 
 typedef struct ray {
@@ -23,6 +23,8 @@ typedef struct ray {
 	char ascii;
 } ray;
 
+// --------------------------- FUNCTIONS -----------------------------
+
 void init_bh(blackhole* bh, int x, int y, int z, float radius){
 	bh->x = x;
 	bh->y = y;
@@ -30,12 +32,12 @@ void init_bh(blackhole* bh, int x, int y, int z, float radius){
 	bh->radius = radius;
 }
 
-void init_ring(ring* r, blackhole* bh, float ir, float er){
+void init_ring(ring* r, blackhole* bh, float ir, float er, float vol){
 	r->x = bh->x;
 	r->y = bh->y;
 	r->z = bh->z;
-	r-iradius = ir;
-	r-eradius = er;
+	r->iradius = ir;
+	r->eradius = er;
 }
 
 ray** init_rays(){
@@ -43,7 +45,7 @@ ray** init_rays(){
 	for (int i = 0; i < H; i++){
 		rays[i] = malloc(sizeof(struct ray)*W);
 		for (int j = 0; j < W; j++){
-			rays[i][j].x = -7.0;
+			rays[i][j].x = -20.0;
 			rays[i][j].y = (float)(i-H/2);
 			rays[i][j].z = (float)(j-W/2);
 			rays[i][j].dx = 1.0;
@@ -56,12 +58,42 @@ ray** init_rays(){
 	return rays;
 }
 
-int hit(float x, float y, float z, blackhole* hole){
+int hit_bh(float x, float y, float z, blackhole* hole){
 	float xx = (x-hole->x)*(x-hole->x);
 	float yy = (y-hole->y)*(y-hole->y);
 	float zz = (z-hole->z)*(z-hole->z);
 	int rr = hole->radius*hole->radius;
 	return xx+yy+zz <= rr;
+}
+
+int hit_ring(float x, float y, float z, ring* orbit){
+	float xx = (x-orbit->x)*(x-orbit->x);
+	float zz = (z-orbit->z)*(z-orbit->z);
+	float ir2 = orbit->iradius * orbit->iradius;
+	float er2 = orbit->eradius * orbit->eradius;
+	return xx+zz <= er2 && xx+zz >= ir2 
+		&& y <= orbit->vol - (orbit->vol / 2) && y >= orbit->vol - (orbit->vol * 1.5);
+}
+
+void step(ray* vector, blackhole* bh){
+	float rx = bh->x - vector->x;
+	float ry = bh->y - vector->y;
+	float rz = bh->z - vector->z;
+	float dist = sqrtf(rx*rx + ry*ry + rz*rz);
+	float force = K / (dist * dist + 1.0);
+	rx /= dist;
+	ry /= dist;
+	rz /= dist;
+	vector->dx += rx * force;
+	vector->dy += ry * force;
+	vector->dz += rz * force;
+	float mag = sqrtf(vector->dx*vector->dx + vector->dy*vector->dy + vector->dz*vector->dz);
+	vector->dx /= mag;
+	vector->dy /= mag;
+	vector->dz /= mag;
+	vector->x += vector->dx * STEP;
+	vector->y += vector->dy * STEP;
+	vector->z += vector->dz * STEP;
 }
 
 void print_matrix(char matrix[H][W]){	
@@ -73,9 +105,13 @@ void print_matrix(char matrix[H][W]){
 	}
 }
 
+// -------------------------- MAIN -------------------------------
+
 int main(void){
-	struct blackhole hole;
+	blackhole hole;
 	init_bh(&hole, 0, 0, 0, 5.0);
+	ring orbit;
+	init_ring(&orbit, &hole, 5.0, 12.0, 0.5);
 	char matrix[H][W];
 	ray** rays = init_rays();
 	int sent = 1;
@@ -85,12 +121,16 @@ int main(void){
 		for (int j = 0; j < W; j++){
 			if (rays[i][j].alive){
 				sent = 1; 
-				rays[i][j].x += rays[i][j].dx;
-				if (hit(rays[i][j].x, rays[i][j].y, rays[i][j].z, &hole)){
-					rays[i][j].ascii = '@';
+				step(&rays[i][j], &hole);
+				if (hit_bh(rays[i][j].x, rays[i][j].y, rays[i][j].z, &hole)){
+					rays[i][j].ascii = ' ';
 					rays[i][j].alive = 0;
 				}
-				if (rays[i][j].x >= 10){
+				if (hit_ring(rays[i][j].x, rays[i][j].y, rays[i][j].z, &orbit)){
+					rays[i][j].ascii = 'o';
+					rays[i][j].alive = 0;
+				}
+				if (rays[i][j].x >= 20){
 					rays[i][j].alive = 0;
 				}
 			}

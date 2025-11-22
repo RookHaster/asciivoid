@@ -3,7 +3,7 @@
 #include <math.h>
 
 #define H 40
-#define W 80
+#define W 60
 #define K 0.3
 #define STEP 0.1
 typedef struct blackhole {
@@ -100,7 +100,9 @@ void step(ray* vector, blackhole* bh){
 void print_matrix(char matrix[H][W]){	
 	for (int i = 0; i < H; i++){
 		for (int j = 0; j < W; j++){
-			putchar(matrix[i][j]);
+			char temp = matrix[i][j];
+			if (temp == '#') printf("\033[33m%c%c\033[0m", temp, temp);
+			else printf("\033[0m%c%c", temp, temp);
 		}
 		putchar('\n');
 	}

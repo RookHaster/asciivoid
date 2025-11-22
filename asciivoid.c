@@ -1,11 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
 
 #define H 40
 #define W 60
 #define K 0.3
 #define STEP 0.1
+
+char matrix[H][W];
+char buffer[W*2 + 2];
+
+
 typedef struct blackhole {
 	int x, y, z;
 	float radius;
@@ -19,8 +25,7 @@ typedef struct ring {
 typedef struct ray {
 	float x, y, z;
 	float dx, dy, dz;
-	char alive, impact;
-	char ascii;
+	char alive;
 } ray;
 
 // --------------------------- FUNCTIONS -----------------------------
@@ -52,8 +57,6 @@ ray** init_rays(){
 			rays[i][j].dx = 1.0;
 			rays[i][j].dy = rays[i][j].dz = 0.0;
 			rays[i][j].alive = 1;
-			rays[i][j].impact = 0;
-			rays[i][j].ascii = '.';
 		}
 	}
 	return rays;
@@ -97,14 +100,16 @@ void step(ray* vector, blackhole* bh){
 	vector->z += vector->dz * STEP;
 }
 
-void print_matrix(char matrix[H][W]){	
+void print_buffer(){
 	for (int i = 0; i < H; i++){
+		int index = 0;
 		for (int j = 0; j < W; j++){
-			char temp = matrix[i][j];
-			if (temp == '#') printf("\033[33m%c%c\033[0m", temp, temp);
-			else printf("\033[0m%c%c", temp, temp);
+			char c = matrix[i][j];
+			buffer[index++] = c;
+			buffer[index++] = c;
 		}
-		putchar('\n');
+		buffer[index++] = '\n';
+		write(1, buffer, index);
 	}
 }
 
@@ -114,8 +119,7 @@ int main(void){
 	blackhole hole;
 	init_bh(&hole, 0, 0, 0, 5.0);
 	ring orbit;
-	init_ring(&orbit, &hole, 10.0, 20.0, 0.5);
-	char matrix[H][W];
+	init_ring(&orbit, &hole, 8.0, 20.0, 0.5);
 	ray** rays = init_rays();
 	int sent = 1;
 	while (sent){
@@ -126,26 +130,22 @@ int main(void){
 				sent = 1; 
 				step(&rays[i][j], &hole);
 				if (hit_bh(rays[i][j].x, rays[i][j].y, rays[i][j].z, &hole)){
-					rays[i][j].ascii = ' ';
 					rays[i][j].alive = 0;
+					matrix[i][j] = ' ';
 				}
 				if (hit_ring(rays[i][j].x, rays[i][j].y, rays[i][j].z, &orbit)){
-					rays[i][j].ascii = '#';
 					rays[i][j].alive = 0;
+					matrix[i][j] = '#';
 				}
 				if (rays[i][j].x >= H/2 || rays[i][j].x <= -H/2
 					|| rays[i][j].y >= H/2 || rays[i][j].y <= -H/2
 					|| rays[i][j].z >= W/2 || rays[i][j].z <= -W/2){
 					rays[i][j].alive = 0;
+					matrix[i][j] = '.';
 				}
 			}
 		}
 	}}
-	for (int i = 0; i < H; i++){
-		for (int j = 0; j < W; j++){
-			matrix[i][j] = rays[i][j].ascii;
-		}
-	}
-	print_matrix(matrix);
+	print_buffer();
 	return 0;
 }

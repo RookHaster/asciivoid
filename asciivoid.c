@@ -7,10 +7,10 @@
 #define W 60
 #define K 0.3
 #define STEP 0.1
+#define TIMER 100
 
-char matrix[H][W];
+char matrix[H][W+1];
 char buffer[W*2 + 2];
-
 
 typedef struct blackhole {
 	int x, y, z;
@@ -19,7 +19,7 @@ typedef struct blackhole {
 
 typedef struct ring {
 	int x, y, z;
-	float iradius, eradius, vol;
+	float iradius, eradius, vol, tilt;
 } ring;
 
 typedef struct ray {
@@ -37,13 +37,14 @@ void init_bh(blackhole* bh, int x, int y, int z, float radius){
 	bh->radius = radius;
 }
 
-void init_ring(ring* r, blackhole* bh, float ir, float er, float vol){
+void init_ring(ring* r, blackhole* bh, float ir, float er, float vol, float tilt){
 	r->x = bh->x;
 	r->y = bh->y;
 	r->z = bh->z;
 	r->iradius = ir;
 	r->eradius = er;
 	r->vol = vol;
+	r->tilt = tilt;
 }
 
 ray** init_rays(){
@@ -76,7 +77,7 @@ int hit_ring(float x, float y, float z, ring* orbit){
 	float ir2 = orbit->iradius * orbit->iradius;
 	float er2 = orbit->eradius * orbit->eradius;
 	return xx+zz <= er2 && xx+zz >= ir2 
-		&& y <= orbit->vol - (orbit->vol / 2) - (0.2*x) && y >= orbit->vol - (orbit->vol * 1.5) - (0.2*x);
+		&& y <= orbit->vol - (orbit->vol / 2) - (orbit->tilt*x) && y >= orbit->vol - (orbit->vol * 1.5) - (orbit->tilt*x);
 }
 
 void step(ray* vector, blackhole* bh){
@@ -100,6 +101,36 @@ void step(ray* vector, blackhole* bh){
 	vector->z += vector->dz * STEP;
 }
 
+void gen_frame(blackhole* hole, ring* orbit){
+	ray** rays = init_rays();
+	int sent = 1;
+	while (sent){
+		sent = 0;
+		for (int i = 0; i < H; i++){
+			for (int j = 0; j < W; j++){
+				if (rays[i][j].alive){
+					sent = 1; 
+					step(&rays[i][j], hole);
+					if (hit_bh(rays[i][j].x, rays[i][j].y, rays[i][j].z, hole)){
+						rays[i][j].alive = 0;
+						matrix[i][j] = ' ';
+					}
+					if (hit_ring(rays[i][j].x, rays[i][j].y, rays[i][j].z, orbit)){
+						rays[i][j].alive = 0;
+						matrix[i][j] = '#';
+					}
+					if (rays[i][j].x >= H/2 || rays[i][j].x <= -H/2
+						|| rays[i][j].y >= H/2 || rays[i][j].y <= -H/2
+						|| rays[i][j].z >= W/2 || rays[i][j].z <= -W/2){
+						rays[i][j].alive = 0;
+						matrix[i][j] = '.';
+					}
+				}
+			}
+		 } // end of stepping each ray
+	} // end of frame
+}
+
 void print_buffer(){
 	for (int i = 0; i < H; i++){
 		int index = 0;
@@ -119,33 +150,8 @@ int main(void){
 	blackhole hole;
 	init_bh(&hole, 0, 0, 0, 5.0);
 	ring orbit;
-	init_ring(&orbit, &hole, 8.0, 20.0, 0.5);
-	ray** rays = init_rays();
-	int sent = 1;
-	while (sent){
-	sent = 0;
-	for (int i = 0; i < H; i++){
-		for (int j = 0; j < W; j++){
-			if (rays[i][j].alive){
-				sent = 1; 
-				step(&rays[i][j], &hole);
-				if (hit_bh(rays[i][j].x, rays[i][j].y, rays[i][j].z, &hole)){
-					rays[i][j].alive = 0;
-					matrix[i][j] = ' ';
-				}
-				if (hit_ring(rays[i][j].x, rays[i][j].y, rays[i][j].z, &orbit)){
-					rays[i][j].alive = 0;
-					matrix[i][j] = '#';
-				}
-				if (rays[i][j].x >= H/2 || rays[i][j].x <= -H/2
-					|| rays[i][j].y >= H/2 || rays[i][j].y <= -H/2
-					|| rays[i][j].z >= W/2 || rays[i][j].z <= -W/2){
-					rays[i][j].alive = 0;
-					matrix[i][j] = '.';
-				}
-			}
-		}
-	}}
+	init_ring(&orbit, &hole, 7.0, 20.0, 0.5, 0.2);
+	gen_frame(&hole, &orbit);
 	print_buffer();
 	return 0;
 }

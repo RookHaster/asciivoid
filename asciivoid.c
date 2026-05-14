@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <unistd.h>
 
 #define H 40
 #define W 60
 #define K 0.3
 #define STEP 0.1
+#define MAX_DIST 50
 #define TIMER 100
 
 char matrix[H][W+1];
@@ -30,6 +30,15 @@ typedef struct ray {
 
 // --------------------------- FUNCTIONS -----------------------------
 
+static float fast_rsqrt(float x){
+	float x2 = x * 0.5f;
+	int i = *(int*)&x;
+	i = 0x5f3759df - (i >> 1);
+	float y = *(float*)&i;
+	return y * (1.5f - x2 * y * y);
+}
+
+
 void init_bh(blackhole* bh, int x, int y, int z, float radius){
 	bh->x = x;
 	bh->y = y;
@@ -48,15 +57,23 @@ void init_ring(ring* r, blackhole* bh, float ir, float er, float vol, float tilt
 }
 
 ray** init_rays(){
+	float f = W / 2.5f; // larger f equals less FOV
 	ray** rays = malloc(sizeof(struct ray*)*H);
 	for (int i = 0; i < H; i++){
 		rays[i] = malloc(sizeof(struct ray)*W);
 		for (int j = 0; j < W; j++){
-			rays[i][j].x = -20.0;
-			rays[i][j].y = (float)(i-H/2);
-			rays[i][j].z = (float)(j-W/2);
-			rays[i][j].dx = 1.0;
-			rays[i][j].dy = rays[i][j].dz = 0.0;
+			float dy = (float)(i - H/2);
+			float dz = (float)(j - W/2);
+			float inv_mag = fast_rsqrt(f*f + dy*dy + dz*dz);
+
+			rays[i][j].x = -30.0f;
+			rays[i][j].y = 0.0f;
+			rays[i][j].z = 0.0f;
+
+			rays[i][j].dx = f * inv_mag;
+			rays[i][j].dy = dy * inv_mag;
+			rays[i][j].dz = dz * inv_mag;
+			
 			rays[i][j].alive = 1;
 		}
 	}
@@ -84,18 +101,20 @@ void step(ray* vector, blackhole* bh){
 	float rx = bh->x - vector->x;
 	float ry = bh->y - vector->y;
 	float rz = bh->z - vector->z;
-	float dist = sqrtf(rx*rx + ry*ry + rz*rz);
-	float force = K / (dist * dist + 1.0);
-	rx /= dist;
-	ry /= dist;
-	rz /= dist;
+	float dist2 = (rx*rx + ry*ry + rz*rz);
+	float force = K / (dist2 + 1.0);
+	float inv_d = fast_rsqrt(dist2);
+	rx *= inv_d;
+	ry *= inv_d;
+	rz *= inv_d;
 	vector->dx += rx * force;
 	vector->dy += ry * force;
 	vector->dz += rz * force;
-	float mag = sqrtf(vector->dx*vector->dx + vector->dy*vector->dy + vector->dz*vector->dz);
-	vector->dx /= mag;
-	vector->dy /= mag;
-	vector->dz /= mag;
+	float mag2 = (vector->dx*vector->dx + vector->dy*vector->dy + vector->dz*vector->dz);
+	float inv_mag = fast_rsqrt(mag2);
+	vector->dx *= inv_mag;
+	vector->dy *= inv_mag;
+	vector->dz *= inv_mag;
 	vector->x += vector->dx * STEP;
 	vector->y += vector->dy * STEP;
 	vector->z += vector->dz * STEP;
@@ -119,9 +138,7 @@ void gen_frame(blackhole* hole, ring* orbit){
 						rays[i][j].alive = 0;
 						matrix[i][j] = '#';
 					}
-					if (rays[i][j].x >= H/2 || rays[i][j].x <= -H/2
-						|| rays[i][j].y >= H/2 || rays[i][j].y <= -H/2
-						|| rays[i][j].z >= W/2 || rays[i][j].z <= -W/2){
+					if (rays[i][j].x * rays[i][j].x + rays[i][j].y * rays[i][j].y + rays[i][j].z * rays[i][j].z >= MAX_DIST*MAX_DIST){
 						rays[i][j].alive = 0;
 						matrix[i][j] = '.';
 					}
@@ -148,9 +165,9 @@ void print_buffer(){
 
 int main(void){
 	blackhole hole;
-	init_bh(&hole, 0, 0, 0, 5.0);
+	init_bh(&hole, 0, 0, 0, 4.0);
 	ring orbit;
-	init_ring(&orbit, &hole, 7.0, 20.0, 0.5, 0.2);
+	init_ring(&orbit, &hole, 7.0, 17.0, 0.5, 0.15);
 	gen_frame(&hole, &orbit);
 	print_buffer();
 	return 0;
